@@ -63,18 +63,18 @@ param(
     [string]$CsvPath
 )
 
-# ─────────────────────────────────────────────
+# ------------------------------------------------
 # Import helpers
-# ─────────────────────────────────────────────
+# ------------------------------------------------
 $helpersPath = Join-Path $PSScriptRoot "helpers"
 . (Join-Path $helpersPath "Connect-GraphHelper.ps1")
 . (Join-Path $helpersPath "Write-Report.ps1")
 . (Join-Path $helpersPath "Send-Notification.ps1")
 
-# ─────────────────────────────────────────────
+# ------------------------------------------------
 # Load configuration
-# ─────────────────────────────────────────────
-$configPath = Join-Path (Split-Path $PSScriptRoot) "config" "config.json"
+# ------------------------------------------------
+$configPath = Join-Path (Join-Path (Split-Path $PSScriptRoot) "config") "config.json"
 
 if (-not (Test-Path $configPath)) {
     Write-Error "Configuration file not found at $configPath. Please copy config.sample.json and update it."
@@ -90,9 +90,9 @@ $licenseSKUs = @{
     'F1' = $config.licenseSkus.F1
 }
 
-# ─────────────────────────────────────────────
+# ------------------------------------------------
 # Functions
-# ─────────────────────────────────────────────
+# ------------------------------------------------
 
 function New-SecureTemporaryPassword {
     <#
@@ -181,16 +181,16 @@ function New-OnboardUser {
     }
 
     try {
-        Write-Host "`n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+        Write-Host "`n---------------------------------------------------------------------------------------------------------------------------" -ForegroundColor Cyan
         Write-Host "  Onboarding: $FirstName $LastName" -ForegroundColor Cyan
-        Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+        Write-Host "---------------------------------------------------------------------------------------------------------------------------" -ForegroundColor Cyan
 
         # Step 1: Generate UPN and password
         Write-Host "`n[1/6] Generating credentials..." -ForegroundColor Yellow
         $upn = New-UserPrincipalName -FirstName $FirstName -LastName $LastName -Domain $domain
         $tempPassword = New-SecureTemporaryPassword
         $result.UserPrincipalName = $upn
-        Write-Host "  ✓ UPN: $upn" -ForegroundColor Green
+        Write-Host "  - UPN: $upn" -ForegroundColor Green
 
         # Step 2: Create user in Entra ID
         Write-Host "[2/6] Creating user account..." -ForegroundColor Yellow
@@ -214,7 +214,7 @@ function New-OnboardUser {
 
         $newUser = New-MgUser @userParams
         $result.Details += "Account created successfully"
-        Write-Host "  ✓ Account created" -ForegroundColor Green
+        Write-Host "  - Account created" -ForegroundColor Green
 
         # Step 3: Assign license
         Write-Host "[3/6] Assigning $LicenseTier license..." -ForegroundColor Yellow
@@ -227,10 +227,10 @@ function New-OnboardUser {
             }
             Set-MgUserLicense -UserId $newUser.Id @licenseParams
             $result.Details += "$LicenseTier license assigned"
-            Write-Host "  ✓ $LicenseTier license assigned" -ForegroundColor Green
+            Write-Host "  - $LicenseTier license assigned" -ForegroundColor Green
         }
         else {
-            Write-Warning "  ⚠ License SKU not found for tier: $LicenseTier"
+            Write-Warning "  - License SKU not found for tier: $LicenseTier"
             $result.Details += "License assignment skipped - SKU not configured"
         }
 
@@ -243,11 +243,11 @@ function New-OnboardUser {
                 try {
                     New-MgGroupMember -GroupId $groupId -DirectoryObjectId $newUser.Id
                     $groupInfo = Get-MgGroup -GroupId $groupId
-                    Write-Host "  ✓ Added to group: $($groupInfo.DisplayName)" -ForegroundColor Green
+                    Write-Host "  - Added to group: $($groupInfo.DisplayName)" -ForegroundColor Green
                     $result.Details += "Added to group: $($groupInfo.DisplayName)"
                 }
                 catch {
-                    Write-Warning "  ⚠ Could not add to group $groupId : $_"
+                    Write-Warning "  - Could not add to group $groupId : $_"
                 }
             }
         }
@@ -257,11 +257,11 @@ function New-OnboardUser {
             try {
                 New-MgGroupMember -GroupId $groupId -DirectoryObjectId $newUser.Id
                 $groupInfo = Get-MgGroup -GroupId $groupId
-                Write-Host "  ✓ Added to group: $($groupInfo.DisplayName)" -ForegroundColor Green
+                Write-Host "  - Added to group: $($groupInfo.DisplayName)" -ForegroundColor Green
                 $result.Details += "Added to group: $($groupInfo.DisplayName)"
             }
             catch {
-                Write-Warning "  ⚠ Could not add to default group $groupId : $_"
+                Write-Warning "  - Could not add to default group $groupId : $_"
             }
         }
 
@@ -274,16 +274,16 @@ function New-OnboardUser {
                     "@odata.id" = "https://graph.microsoft.com/v1.0/users/$($managerUser.Id)"
                 }
                 Set-MgUserManagerByRef -UserId $newUser.Id -BodyParameter $managerRef
-                Write-Host "  ✓ Manager set: $Manager" -ForegroundColor Green
+                Write-Host "  - Manager set: $Manager" -ForegroundColor Green
                 $result.Details += "Manager set: $Manager"
             }
             catch {
-                Write-Warning "  ⚠ Could not set manager: $_"
+                Write-Warning "  - Could not set manager: $_"
                 $result.Details += "Manager assignment failed"
             }
         }
         else {
-            Write-Host "  — Skipped (no manager specified)" -ForegroundColor DarkGray
+            Write-Host "  --- Skipped (no manager specified)" -ForegroundColor DarkGray
         }
 
         # Step 6: Send welcome notification
@@ -298,31 +298,31 @@ function New-OnboardUser {
                 License           = $LicenseTier
             }
             Send-OnboardingNotification -To $config.notificationEmail -Data $notificationData
-            Write-Host "  ✓ Notification sent to $($config.notificationEmail)" -ForegroundColor Green
+            Write-Host "  - Notification sent to $($config.notificationEmail)" -ForegroundColor Green
             $result.Details += "Welcome notification sent"
         }
 
         $result.Status = 'Success'
-        Write-Host "`n  ✅ Onboarding complete for $FirstName $LastName" -ForegroundColor Green
+        Write-Host "`n  - Onboarding complete for $FirstName $LastName" -ForegroundColor Green
     }
     catch {
         $result.Status = 'Failed'
         $result.Details += "Error: $($_.Exception.Message)"
-        Write-Host "`n  ❌ Onboarding failed: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "`n  - Onboarding failed: $($_.Exception.Message)" -ForegroundColor Red
     }
 
     return $result
 }
 
-# ─────────────────────────────────────────────
+# ------------------------------------------------
 # Main Execution
-# ─────────────────────────────────────────────
+# ------------------------------------------------
 
 Write-Host ""
-Write-Host "╔══════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║   Azure Entra ID - User Onboarding Tool     ║" -ForegroundColor Cyan
-Write-Host "║   github.com/carosrrr                       ║" -ForegroundColor Cyan
-Write-Host "╚══════════════════════════════════════════════╝" -ForegroundColor Cyan
+Write-Host "-------------------------------------------------" -ForegroundColor Cyan
+Write-Host "-   Azure Entra ID - User Onboarding Tool     -" -ForegroundColor Cyan
+Write-Host "-   github.com/carosrrr                       -" -ForegroundColor Cyan
+Write-Host "------------------------------------------------" -ForegroundColor Cyan
 
 # Connect to Microsoft Graph
 Connect-GraphWithConfig -Config $config
@@ -351,7 +351,7 @@ if ($PSCmdlet.ParameterSetName -eq 'Bulk') {
             -Department $user.Department `
             -JobTitle $user.JobTitle `
             -Manager $user.Manager `
-            -LicenseTier ($user.License ?? 'E3')
+            -LicenseTier (if ($user.License) { $user.License } else { 'E3' })
 
         $results += $result
     }
@@ -369,9 +369,9 @@ else {
     $results += $result
 }
 
-# ─────────────────────────────────────────────
+# ------------------------------------------------
 # Generate Report
-# ─────────────────────────────────────────────
+# ------------------------------------------------
 $reportPath = Join-Path (Split-Path $PSScriptRoot) "reports"
 if (-not (Test-Path $reportPath)) {
     New-Item -ItemType Directory -Path $reportPath -Force | Out-Null
@@ -389,11 +389,11 @@ $reportData = @{
 $reportData | ConvertTo-Json -Depth 5 | Out-File $reportFile -Encoding UTF8
 
 # Summary
-Write-Host "`n╔══════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║                  SUMMARY                     ║" -ForegroundColor Cyan
-Write-Host "╠══════════════════════════════════════════════╣" -ForegroundColor Cyan
-Write-Host "║  Total processed: $($results.Count)                        ║" -ForegroundColor White
-Write-Host "║  Successful:      $($reportData.Successful)                        ║" -ForegroundColor Green
-Write-Host "║  Failed:          $($reportData.Failed)                        ║" -ForegroundColor $(if ($reportData.Failed -gt 0) { 'Red' } else { 'White' })
-Write-Host "║  Report saved:    $reportFile  ║" -ForegroundColor White
-Write-Host "╚══════════════════════════════════════════════╝" -ForegroundColor Cyan
+Write-Host "`n-------------------------------------------------" -ForegroundColor Cyan
+Write-Host "-                  SUMMARY                     -" -ForegroundColor Cyan
+Write-Host "------------------------------------------------" -ForegroundColor Cyan
+Write-Host "-  Total processed: $($results.Count)                        -" -ForegroundColor White
+Write-Host "-  Successful:      $($reportData.Successful)                        -" -ForegroundColor Green
+Write-Host "-  Failed:          $($reportData.Failed)                        -" -ForegroundColor $(if ($reportData.Failed -gt 0) { 'Red' } else { 'White' })
+Write-Host "-  Report saved:    $reportFile  -" -ForegroundColor White
+Write-Host "------------------------------------------------" -ForegroundColor Cyan

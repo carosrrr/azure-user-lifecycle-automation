@@ -38,18 +38,18 @@ param(
     [string]$CsvPath
 )
 
-# ─────────────────────────────────────────────
+# ------------------------------------------------
 # Import helpers
-# ─────────────────────────────────────────────
+# ------------------------------------------------
 $helpersPath = Join-Path $PSScriptRoot "helpers"
 . (Join-Path $helpersPath "Connect-GraphHelper.ps1")
 . (Join-Path $helpersPath "Write-Report.ps1")
 . (Join-Path $helpersPath "Send-Notification.ps1")
 
-# ─────────────────────────────────────────────
+# ------------------------------------------------
 # Load configuration
-# ─────────────────────────────────────────────
-$configPath = Join-Path (Split-Path $PSScriptRoot) "config" "config.json"
+# ------------------------------------------------
+$configPath = Join-Path (Join-Path (Split-Path $PSScriptRoot) "config") "config.json"
 
 if (-not (Test-Path $configPath)) {
     Write-Error "Configuration file not found at $configPath."
@@ -58,9 +58,9 @@ if (-not (Test-Path $configPath)) {
 
 $config = Get-Content $configPath | ConvertFrom-Json
 
-# ─────────────────────────────────────────────
+# ------------------------------------------------
 # Functions
-# ─────────────────────────────────────────────
+# ------------------------------------------------
 
 function Remove-OffboardUser {
     <#
@@ -81,9 +81,9 @@ function Remove-OffboardUser {
     }
 
     try {
-        Write-Host "`n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Red
+        Write-Host "`n---------------------------------------------------------------------------------------------------------------------------" -ForegroundColor Red
         Write-Host "  Offboarding: $UPN" -ForegroundColor Red
-        Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Red
+        Write-Host "---------------------------------------------------------------------------------------------------------------------------" -ForegroundColor Red
 
         # Verify user exists
         $user = Get-MgUser -UserId $UPN -Property "Id,DisplayName,UserPrincipalName,AssignedLicenses"
@@ -94,13 +94,13 @@ function Remove-OffboardUser {
         Write-Host "`n[1/6] Disabling account..." -ForegroundColor Yellow
         Update-MgUser -UserId $user.Id -AccountEnabled:$false
         $result.Details += "Account disabled"
-        Write-Host "  ✓ Account disabled" -ForegroundColor Green
+        Write-Host "  - Account disabled" -ForegroundColor Green
 
         # Step 2: Revoke all sessions
         Write-Host "[2/6] Revoking active sessions..." -ForegroundColor Yellow
         Revoke-MgUserSignInSession -UserId $user.Id
         $result.Details += "All sessions revoked"
-        Write-Host "  ✓ All sessions revoked" -ForegroundColor Green
+        Write-Host "  - All sessions revoked" -ForegroundColor Green
 
         # Step 3: Reset password to random (extra security)
         Write-Host "[3/6] Resetting password..." -ForegroundColor Yellow
@@ -111,7 +111,7 @@ function Remove-OffboardUser {
         }
         Update-MgUser -UserId $user.Id -PasswordProfile $passwordProfile
         $result.Details += "Password reset to random value"
-        Write-Host "  ✓ Password reset" -ForegroundColor Green
+        Write-Host "  - Password reset" -ForegroundColor Green
 
         # Step 4: Remove group memberships
         Write-Host "[4/6] Removing group memberships..." -ForegroundColor Yellow
@@ -128,12 +128,12 @@ function Remove-OffboardUser {
             }
             catch {
                 # Some groups may not allow removal (dynamic groups)
-                Write-Host "  ⚠ Could not remove from group: $($group.Id)" -ForegroundColor DarkYellow
+                Write-Host "  - Could not remove from group: $($group.Id)" -ForegroundColor DarkYellow
             }
         }
 
         $result.Details += "Removed from $removedGroups groups"
-        Write-Host "  ✓ Removed from $removedGroups groups" -ForegroundColor Green
+        Write-Host "  - Removed from $removedGroups groups" -ForegroundColor Green
 
         # Step 5: Convert mailbox to shared (optional)
         Write-Host "[5/6] Mailbox conversion..." -ForegroundColor Yellow
@@ -142,15 +142,15 @@ function Remove-OffboardUser {
             try {
                 Set-Mailbox -Identity $UPN -Type Shared
                 $result.Details += "Mailbox converted to shared"
-                Write-Host "  ✓ Mailbox converted to shared" -ForegroundColor Green
+                Write-Host "  - Mailbox converted to shared" -ForegroundColor Green
             }
             catch {
-                Write-Warning "  ⚠ Could not convert mailbox. Ensure Exchange Online module is loaded."
+                Write-Warning "  - Could not convert mailbox. Ensure Exchange Online module is loaded."
                 $result.Details += "Mailbox conversion failed - requires Exchange Online module"
             }
         }
         else {
-            Write-Host "  — Skipped (not requested)" -ForegroundColor DarkGray
+            Write-Host "  --- Skipped (not requested)" -ForegroundColor DarkGray
         }
 
         # Step 6: Remove licenses
@@ -164,10 +164,10 @@ function Remove-OffboardUser {
             }
             Set-MgUserLicense -UserId $user.Id @licenseParams
             $result.Details += "Removed $($assignedLicenses.Count) licenses"
-            Write-Host "  ✓ Removed $($assignedLicenses.Count) licenses" -ForegroundColor Green
+            Write-Host "  - Removed $($assignedLicenses.Count) licenses" -ForegroundColor Green
         }
         else {
-            Write-Host "  — No licenses to remove" -ForegroundColor DarkGray
+            Write-Host "  --- No licenses to remove" -ForegroundColor DarkGray
         }
 
         # Update user properties to mark as offboarded
@@ -175,7 +175,7 @@ function Remove-OffboardUser {
         Update-MgUser -UserId $user.Id -Department "OFFBOARDED" -CompanyName $offboardNote
 
         $result.Status = 'Success'
-        Write-Host "`n  ✅ Offboarding complete for $($user.DisplayName)" -ForegroundColor Green
+        Write-Host "`n  - Offboarding complete for $($user.DisplayName)" -ForegroundColor Green
 
         # Send notification
         if ($config.notificationEmail) {
@@ -186,27 +186,27 @@ function Remove-OffboardUser {
                 LicensesRemoved   = $assignedLicenses.Count
             }
             Send-OffboardingNotification -To $config.notificationEmail -Data $notificationData
-            Write-Host "  ✓ Notification sent" -ForegroundColor Green
+            Write-Host "  - Notification sent" -ForegroundColor Green
         }
     }
     catch {
         $result.Status = 'Failed'
         $result.Details += "Error: $($_.Exception.Message)"
-        Write-Host "`n  ❌ Offboarding failed: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "`n  - Offboarding failed: $($_.Exception.Message)" -ForegroundColor Red
     }
 
     return $result
 }
 
-# ─────────────────────────────────────────────
+# ------------------------------------------------
 # Main Execution
-# ─────────────────────────────────────────────
+# ------------------------------------------------
 
 Write-Host ""
-Write-Host "╔══════════════════════════════════════════════╗" -ForegroundColor Red
-Write-Host "║   Azure Entra ID - User Offboarding Tool    ║" -ForegroundColor Red
-Write-Host "║   github.com/carosrrr                       ║" -ForegroundColor Red
-Write-Host "╚══════════════════════════════════════════════╝" -ForegroundColor Red
+Write-Host "-------------------------------------------------" -ForegroundColor Red
+Write-Host "-   Azure Entra ID - User Offboarding Tool    -" -ForegroundColor Red
+Write-Host "-   github.com/carosrrr                       -" -ForegroundColor Red
+Write-Host "------------------------------------------------" -ForegroundColor Red
 
 # Connect to Microsoft Graph
 Connect-GraphWithConfig -Config $config
@@ -221,7 +221,7 @@ if ($PSCmdlet.ParameterSetName -eq 'Bulk') {
 
     $users = Import-Csv $CsvPath
     $total = $users.Count
-    Write-Host "`n⚠ About to offboard $total users. Continue? (Y/N)" -ForegroundColor Yellow
+    Write-Host "`n- About to offboard $total users. Continue? (Y/N)" -ForegroundColor Yellow
     $confirm = Read-Host
 
     if ($confirm -ne 'Y') {
@@ -244,9 +244,9 @@ else {
     $results += $result
 }
 
-# ─────────────────────────────────────────────
+# ------------------------------------------------
 # Generate Report
-# ─────────────────────────────────────────────
+# ------------------------------------------------
 $reportPath = Join-Path (Split-Path $PSScriptRoot) "reports"
 if (-not (Test-Path $reportPath)) {
     New-Item -ItemType Directory -Path $reportPath -Force | Out-Null
@@ -264,11 +264,11 @@ $reportData = @{
 $reportData | ConvertTo-Json -Depth 5 | Out-File $reportFile -Encoding UTF8
 
 # Summary
-Write-Host "`n╔══════════════════════════════════════════════╗" -ForegroundColor Red
-Write-Host "║                  SUMMARY                     ║" -ForegroundColor Red
-Write-Host "╠══════════════════════════════════════════════╣" -ForegroundColor Red
-Write-Host "║  Total processed: $($results.Count)                        ║" -ForegroundColor White
-Write-Host "║  Successful:      $($reportData.Successful)                        ║" -ForegroundColor Green
-Write-Host "║  Failed:          $($reportData.Failed)                        ║" -ForegroundColor $(if ($reportData.Failed -gt 0) { 'Red' } else { 'White' })
-Write-Host "║  Report saved:    $reportFile  ║" -ForegroundColor White
-Write-Host "╚══════════════════════════════════════════════╝" -ForegroundColor Red
+Write-Host "`n-------------------------------------------------" -ForegroundColor Red
+Write-Host "-                  SUMMARY                     -" -ForegroundColor Red
+Write-Host "------------------------------------------------" -ForegroundColor Red
+Write-Host "-  Total processed: $($results.Count)                        -" -ForegroundColor White
+Write-Host "-  Successful:      $($reportData.Successful)                        -" -ForegroundColor Green
+Write-Host "-  Failed:          $($reportData.Failed)                        -" -ForegroundColor $(if ($reportData.Failed -gt 0) { 'Red' } else { 'White' })
+Write-Host "-  Report saved:    $reportFile  -" -ForegroundColor White
+Write-Host "------------------------------------------------" -ForegroundColor Red

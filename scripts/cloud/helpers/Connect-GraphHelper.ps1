@@ -22,7 +22,7 @@ function Connect-GraphWithConfig {
         # Check if already connected
         $context = Get-MgContext
         if ($context) {
-            Write-Host "  ✓ Already connected as $($context.Account)" -ForegroundColor Green
+            Write-Host "  - Already connected as $($context.Account)" -ForegroundColor Green
             return
         }
     }
@@ -52,7 +52,7 @@ function Connect-GraphWithConfig {
         }
 
         $context = Get-MgContext
-        Write-Host "  ✓ Connected to tenant: $($context.TenantId)" -ForegroundColor Green
+        Write-Host "  - Connected to tenant: $($context.TenantId)" -ForegroundColor Green
     }
     catch {
         Write-Error "Failed to connect to Microsoft Graph: $($_.Exception.Message)"

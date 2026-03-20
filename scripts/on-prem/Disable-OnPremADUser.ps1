@@ -28,17 +28,17 @@ param(
     [object]$WebhookData
 )
 
-# ═══════════════════════════════════════════════
-# SETTINGS — Update these for your environment
-# ═══════════════════════════════════════════════
+# 
+# SETTINGS  Update these for your environment
+# 
 $TargetOU              = "OU=Disabled Users,OU=Company,OU=Offices,DC=yourdomain,DC=com"
 $DescriptionPrefix     = "Leaver"
 $TriggerAadConnectSync = $true
 $AdSyncModulePath      = "C:\Program Files\Microsoft Azure AD Sync\Bin\ADSync\ADSync.psd1"
 
-# ═══════════════════════════════════════════════
+# 
 # HELPERS
-# ═══════════════════════════════════════════════
+# 
 
 function Norm([object]$v) {
     if ($null -eq $v) { $null }
@@ -49,9 +49,9 @@ function OutJson($obj) {
     $obj | ConvertTo-Json -Depth 6 -Compress | Write-Output
 }
 
-# ═══════════════════════════════════════════════
+# 
 # MAIN EXECUTION
-# ═══════════════════════════════════════════════
+# 
 
 if (-not $WebhookData) {
     Write-Output "This runbook must be called via webhook."
@@ -87,7 +87,7 @@ if ([string]::IsNullOrWhiteSpace($email)) {
     exit 1
 }
 
-# ─── Find the user (UPN first, then mail/proxyAddresses) ───
+#  Find the user (UPN first, then mail/proxyAddresses) 
 $user = Get-ADUser -Filter "UserPrincipalName -eq '$email'" `
     -Properties MemberOf, Manager, Enabled, DistinguishedName `
     -ErrorAction SilentlyContinue
@@ -109,7 +109,7 @@ $desc  = "$today - $DescriptionPrefix" + $(if ($reason) { " ($reason)" } else { 
 
 $actions = @()
 
-# ─── Step 1: Disable account ───
+#  Step 1: Disable account 
 try {
     if (-not $user.Enabled) {
         $actions += @{ action = "disable"; result = "already_disabled" }
@@ -121,7 +121,7 @@ try {
     $actions += @{ action = "disable"; result = "error"; error = "$($_.Exception.Message)" }
 }
 
-# ─── Step 2: Remove from all groups ───
+#  Step 2: Remove from all groups 
 try {
     $removed = @()
     foreach ($g in $user.MemberOf) {
@@ -147,7 +147,7 @@ try {
     $actions += @{ action = "remove_groups"; result = "error"; error = "$($_.Exception.Message)" }
 }
 
-# ─── Step 3: Clear manager ───
+#  Step 3: Clear manager 
 try {
     Set-ADUser -Identity $dn -Manager $null -ErrorAction Stop
     $actions += @{ action = "clear_manager"; result = "ok" }
@@ -155,7 +155,7 @@ try {
     $actions += @{ action = "clear_manager"; result = "error"; error = "$($_.Exception.Message)" }
 }
 
-# ─── Step 4: Set description with date and reason ───
+#  Step 4: Set description with date and reason 
 try {
     Set-ADUser -Identity $dn -Description $desc -ErrorAction Stop
     $actions += @{ action = "set_description"; result = "ok"; description = $desc }
@@ -163,7 +163,7 @@ try {
     $actions += @{ action = "set_description"; result = "error"; error = "$($_.Exception.Message)" }
 }
 
-# ─── Step 5: Move to Disabled Users OU ───
+#  Step 5: Move to Disabled Users OU 
 try {
     Move-ADObject -Identity $dn -TargetPath $TargetOU -ErrorAction Stop
     $actions += @{ action = "move_ou"; result = "ok"; targetOU = $TargetOU }
@@ -176,7 +176,7 @@ try {
     }
 }
 
-# ─── Step 6: Trigger AAD Connect delta sync ───
+#  Step 6: Trigger AAD Connect delta sync 
 if ($TriggerAadConnectSync) {
     try {
         Import-Module $AdSyncModulePath -ErrorAction Stop
@@ -191,7 +191,7 @@ if ($TriggerAadConnectSync) {
     }
 }
 
-# ─── Return structured result ───
+#  Return structured result 
 OutJson @{
     status  = "processed"
     upn     = $email

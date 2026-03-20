@@ -35,17 +35,17 @@ param(
     [object]$WebhookData
 )
 
-# ═══════════════════════════════════════════════
-# SETTINGS — Update these for your environment
-# ═══════════════════════════════════════════════
+# 
+# SETTINGS  Update these for your environment
+# 
 $DefaultTargetOU         = "OU=Users,OU=Company,OU=Offices,DC=yourdomain,DC=com"
 $DefaultGroups           = @("grp_ssl_users", "grp_default_access")
 $DefaultCompany          = "YourCompany"
 $DefaultChangePwdAtLogon = $false
 
-# ═══════════════════════════════════════════════
+# 
 # UTILITY FUNCTIONS
-# ═══════════════════════════════════════════════
+# 
 
 function New-StrongPassword {
     <#
@@ -128,9 +128,9 @@ function Write-JsonResult {
     $Obj | ConvertTo-Json -Depth 6 -Compress | Write-Output
 }
 
-# ═══════════════════════════════════════════════
+# 
 # INPUT HELPERS
-# ═══════════════════════════════════════════════
+# 
 
 function Require($value, $name) {
     if ([string]::IsNullOrWhiteSpace($value)) {
@@ -143,9 +143,9 @@ function Norm([object]$v) {
     else { return ([string]$v).Trim() }
 }
 
-# ═══════════════════════════════════════════════
+# 
 # MAIN EXECUTION
-# ═══════════════════════════════════════════════
+# 
 
 # Verify AD module is available
 try {
@@ -185,7 +185,7 @@ try {
     exit 1
 }
 
-# ─── Extract and normalize fields ───
+#  Extract and normalize fields 
 $FullNameRaw = Norm $Body.fullName
 $FirstName   = Norm $Body.firstName
 $LastName    = Norm $Body.lastName
@@ -214,7 +214,7 @@ $Country    = Norm $Body.country
 $Company    = Norm $Body.company;  if (-not $Company)  { $Company  = $DefaultCompany }
 $TargetOU   = Norm $Body.targetOU; if (-not $TargetOU) { $TargetOU = $DefaultTargetOU }
 
-# ─── Parse groups (supports array, comma-separated string, or default) ───
+#  Parse groups (supports array, comma-separated string, or default) 
 $Groups = @()
 if ($Body.PSObject.Properties.Name -contains 'groups' -and $null -ne $Body.groups) {
     if ($Body.groups -is [System.Array]) {
@@ -235,7 +235,7 @@ if ($Groups.Count -eq 0) { $Groups = $DefaultGroups }
 $ChangeAtLogon  = if ($null -ne $Body.changePasswordAtLogon) { [bool]$Body.changePasswordAtLogon } else { $DefaultChangePwdAtLogon }
 $ReturnPassword = [bool]$Body.returnPassword
 
-# ─── Validate required fields ───
+#  Validate required fields 
 try {
     Require $FullNameRaw 'fullName or (firstName + lastName)'
     Require $UPN         'userPrincipalName'
@@ -247,7 +247,7 @@ try {
 
 $FullName = $FullNameRaw
 
-# ─── Password handling ───
+#  Password handling 
 $NeedAuto = $true
 if ($Body.PSObject.Properties.Name -contains 'initialPassword' -and [string]::IsNullOrWhiteSpace($Body.initialPassword) -eq $false) {
     if (-not $Body.autoGeneratePassword -or $Body.autoGeneratePassword -eq $false) {
@@ -257,7 +257,7 @@ if ($Body.PSObject.Properties.Name -contains 'initialPassword' -and [string]::Is
 $PlainPassword  = if ($NeedAuto) { New-StrongPassword -Length 14 } else { [string]$Body.initialPassword }
 $SecurePassword = ConvertTo-SecureString $PlainPassword -AsPlainText -Force
 
-# ─── Resolve manager ───
+#  Resolve manager 
 $ManagerDN = $null
 if ($Body.manager -or $Body.managerUpn -or $Body.managerSam) {
     $ManagerDN = Resolve-ManagerDN `
@@ -266,7 +266,7 @@ if ($Body.manager -or $Body.managerUpn -or $Body.managerSam) {
         -SamAccountName $Body.managerSam
 }
 
-# ─── Idempotency check: skip if user already exists ───
+#  Idempotency check: skip if user already exists 
 if ($UPN -and (Get-ADUser -Filter "UserPrincipalName -eq '$UPN'" -ErrorAction SilentlyContinue)) {
     Write-JsonResult @{ status = "exists"; reason = "UPN already present"; upn = $UPN; sam = $Sam }
     exit 0
@@ -276,7 +276,7 @@ if ($Sam -and (Get-ADUser -Filter "SamAccountName -eq '$Sam'" -ErrorAction Silen
     exit 0
 }
 
-# ─── Create the user ───
+#  Create the user 
 $Params = @{
     Name                  = $FullName
     DisplayName           = $FullName
@@ -312,7 +312,7 @@ try {
     exit 1
 }
 
-# ─── Verify user was created (retry up to 5 times) ───
+#  Verify user was created (retry up to 5 times) 
 $userObject = $null
 for ($i = 0; $i -lt 5; $i++) {
     $userObject = Get-ADUser -Filter "UserPrincipalName -eq '$UPN'" -ErrorAction SilentlyContinue
@@ -330,7 +330,7 @@ if (-not $userObject) {
     exit 0
 }
 
-# ─── Add to groups ───
+#  Add to groups 
 $GroupResults = @()
 foreach ($g in $Groups) {
     $grpObj = Get-ADGroup -LDAPFilter "(name=$g)" -ErrorAction SilentlyContinue
@@ -346,7 +346,7 @@ foreach ($g in $Groups) {
     }
 }
 
-# ─── Return result ───
+#  Return result 
 $result = @{
     status = "created"
     upn    = $UPN
