@@ -1,0 +1,38 @@
+{
+  "_comment": "On-prem scripts read settings from the script itself (top section). This file documents the expected webhook payload fields.",
+  "webhookPayload_onboarding": {
+    "firstName": "string (required if no fullName)",
+    "lastName": "string (required if no fullName)",
+    "fullName": "string (optional, built from first+last if missing)",
+    "userPrincipalName": "string (required) - e.g. john.doe@company.com",
+    "samAccountName": "string (optional, derived from UPN if missing)",
+    "mail": "string (optional, defaults to UPN)",
+    "jobTitle": "string (optional)",
+    "department": "string (optional)",
+    "employeeID": "string (optional)",
+    "city": "string (optional)",
+    "country": "string (optional)",
+    "company": "string (optional, defaults to script setting)",
+    "targetOU": "string (optional, defaults to script setting)",
+    "manager": "string (optional) - display name",
+    "managerUpn": "string (optional) - UPN lookup",
+    "managerSam": "string (optional) - SAM lookup",
+    "groups": "array or comma-separated string (optional, defaults to script setting)",
+    "autoGeneratePassword": "boolean (default: true)",
+    "initialPassword": "string (used only if autoGeneratePassword is false)",
+    "changePasswordAtLogon": "boolean (default: false)",
+    "returnPassword": "boolean (default: false) - include temp password in response"
+  },
+  "webhookPayload_offboarding": {
+    "workEmail": "string (required if no userPrincipalName)",
+    "userPrincipalName": "string (required if no workEmail)",
+    "reason": "string (optional) - appended to description"
+  },
+  "scriptSettings": {
+    "DefaultTargetOU": "OU=Users,OU=Company,OU=Offices,DC=yourdomain,DC=com",
+    "DisabledOU": "OU=Disabled Users,OU=Company,OU=Offices,DC=yourdomain,DC=com",
+    "DefaultGroups": ["grp_ssl_users", "grp_default_access"],
+    "DefaultCompany": "YourCompany",
+    "TriggerAadConnectSync": true
+  }
+}

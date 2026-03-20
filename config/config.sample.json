@@ -1,0 +1,51 @@
+{
+  "tenantId": "YOUR-TENANT-ID-HERE",
+  "defaultDomain": "yourcompany.com",
+  "usageLocation": "US",
+  "authentication": {
+    "method": "interactive",
+    "clientId": "YOUR-APP-CLIENT-ID",
+    "certificateThumbprint": "YOUR-CERT-THUMBPRINT",
+    "clientSecret": "DO-NOT-USE-IN-PRODUCTION"
+  },
+  "licenseSkus": {
+    "E1": "18181a46-0d4e-45cd-891e-60aabd171b4e",
+    "E3": "6fd2c87f-b296-42f0-b197-1e91e994b900",
+    "E5": "c7df2760-2c81-4ef7-b578-5b5392b571df",
+    "F1": "66b55226-6b4f-492c-910c-a3b7a3c9d993"
+  },
+  "defaultGroups": [
+    "GROUP-ID-ALL-EMPLOYEES",
+    "GROUP-ID-COMPANY-NEWS"
+  ],
+  "departmentGroups": [
+    {
+      "department": "Engineering",
+      "groupIds": [
+        "GROUP-ID-ENGINEERING-TEAM",
+        "GROUP-ID-ENGINEERING-TOOLS"
+      ]
+    },
+    {
+      "department": "Marketing",
+      "groupIds": [
+        "GROUP-ID-MARKETING-TEAM"
+      ]
+    },
+    {
+      "department": "Sales",
+      "groupIds": [
+        "GROUP-ID-SALES-TEAM",
+        "GROUP-ID-CRM-ACCESS"
+      ]
+    },
+    {
+      "department": "HR",
+      "groupIds": [
+        "GROUP-ID-HR-TEAM",
+        "GROUP-ID-CONFIDENTIAL-ACCESS"
+      ]
+    }
+  ],
+  "notificationEmail": "it-admin@yourcompany.com"
+}
